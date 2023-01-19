@@ -6,6 +6,7 @@ import toml
 import time
 import shlex
 import obsws_python as obs
+from flask import Flask, jsonify, request
 
 FONT_STRING_BLACKLETTER = "xft:F25 BlackletterTypewriter:pixelsize=20,xft:Pragmata Pro Mono:pixelsize=24,xft:Bitstream Vera Sans Mono:pixelsize=33"
 FONT_STRING_MONO = "xft:Pragmata Pro Mono:pixelsize=24,xft:Bitstream Vera Sans Mono:pixelsize=33"
@@ -67,25 +68,55 @@ def launch_commands():
         else:
             exec_name = cmd.split(' ')[0]
             argv = cmd.split(' ')[1:]
-        p = subprocess.Popen(argv, executable=exec_name, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p = subprocess.Popen(argv, executable=exec_name)
+           #, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         processes_launched.append(p)
 
 
 
+    
+
+
+app = Flask(__name__)
+SCENES = []
+SCENE_INDEX = 0
 
 def main():
     launch_commands()
+    # app.run(debug=True, port=8888)
     time.sleep(1000)
-    with obs.ReqClient() as client:
-        resp = client.get_scene_list()
-        scenes = [di.get("sceneName") for di in reversed(resp.scenes)]
+    obs_client = obs.ReqClient(host=OBS_HOST, port=OBS_PORT, password=OBS_PASSWORD)
+    resp = obs_client.get_scene_list()
+    SCENES = [di.get("sceneName") for di in reversed(resp.scenes)]
+    # for scene in scenes:
+    #     print(f"Switching to scene {scene}")
+    #     obs_client.set_current_program_scene(scene)
+    #     time.sleep(0.5)
 
-        for scene in scenes:
-            print(f"Switching to scene {scene}")
-            client.set_current_program_scene(scene)
-            time.sleep(0.5)
 
 
+
+
+@app.route("/keepAlive", methods=["GET"])
+def keep_alive():
+    return jsonify({"status": "alive"})
+
+@app.route("/scene/<scene_name>", methods=["GET"])
+def scene(scene_name=None):
+    if scene_name in SCENES:
+        SCENE_INDEX = SCENES.index(scene_name)
+    elif scene_name == "next":
+        if SCENE_INDEX < len(SCENES):
+            SCENE_INDEX += 1
+        else:
+            SCENE_INDEX = 0
+    elif scene_name == "prev":
+        if SCENE_INDEX > 0:
+            SCENE_INDEX -= 1
+        else:
+            SCENE_INDEX = len(SCENES)
+    new_scene = SCENES[SCENE_INDEX]
+    return jsonify({"scene":new_scene})
 
 import signal
 import atexit
