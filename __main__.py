@@ -49,14 +49,22 @@ LAUNCH_LIST = [
   TermParams(title="df", command="watch -n 2 df", geometry=TermGeometry(20, 8)),
 ]
 
+import threading
+
 class Launcher:
     processes_launched = []
 
+    _kill_timer = None
+
     @classmethod
     def kill(cls):
+        if cls._kill_timer:
+            cls._kill_timer.cancel()
+            cls._kill_timer = None
         for p in cls.processes_launched:
             print(f"@KILLING {p}")
             p.kill()
+        cls.processes_launched = []
 
     @classmethod
     def is_launched(cls):
@@ -64,8 +72,10 @@ class Launcher:
     
     @classmethod
     def keep_alive(cls):
-        pass
-        #fixme implement
+        if cls._kill_timer:
+            cls._kill_timer.cancel()
+        cls._kill_timer = threading.Timer(5.0, cls.kill)
+        cls._kill_timer.start()
 
     @classmethod
     def launch(cls):
@@ -82,6 +92,7 @@ class Launcher:
             #, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             cls.processes_launched.append(p)
 
+        cls.keep_alive()
 
 
     
@@ -163,6 +174,8 @@ def kill():
 
 @app.route("/keepAlive", methods=["GET"])
 def keep_alive():
+    if not Launcher.is_launched():
+        launch()
     Launcher.keep_alive()
     return jsonify({"status": "alive"})
 
@@ -170,6 +183,7 @@ def keep_alive():
 def scene(scene_name=None):
     if not Launcher.is_launched():
         launch()
+    Launcher.keep_alive()
     if scene_name in SceneSwitcher.scenes:
         SceneSwitcher.switch(scene_name)
     elif scene_name == "next":
