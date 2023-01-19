@@ -15,6 +15,16 @@ pip install -r requirements.txt
 python obsfucatorium.py
 ```
 
+# Usage
+
+```
+curl http://localhost:8001/keepAlive
+curl http://localhost:8001/launch
+curl http://localhost:8001/kill
+curl http://localhost:8001/scene/prev
+curl http://localhost:8001/scene/next
+```
+
 # Install default monitoring suite
 
 ```
