@@ -5,9 +5,10 @@ import subprocess
 import toml
 import time
 import shlex
+import os
 from flask import Flask, jsonify, request
 
-
+ENV=dict(os.environ, DISPLAY=":0.0", XAUTHORITY=os.path.expanduser("~/.Xauthority"))
 KEEP_ALIVE_TIMEOUT_SECONDS = 60.0
 FONT_STRING_BLACKLETTER = "xft:F25 BlackletterTypewriter:pixelsize=20,xft:Pragmata Pro Mono:pixelsize=24,xft:Bitstream Vera Sans Mono:pixelsize=33"
 FONT_STRING_MONO = "xft:Pragmata Pro Mono:pixelsize=24,xft:Bitstream Vera Sans Mono:pixelsize=33"
@@ -90,7 +91,7 @@ class Launcher:
             else:
                 exec_name = cmd.split(' ')[0]
                 argv = cmd.split(' ')[1:]
-            p = subprocess.Popen(argv, executable=exec_name)
+            p = subprocess.Popen(argv, executable=exec_name, env=ENV)
             #, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             cls.processes_launched.append(p)
 
