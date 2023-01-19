@@ -5,7 +5,6 @@ import subprocess
 import toml
 import time
 import shlex
-import obsws_python as obs
 from flask import Flask, jsonify, request
 
 FONT_STRING_BLACKLETTER = "xft:F25 BlackletterTypewriter:pixelsize=20,xft:Pragmata Pro Mono:pixelsize=24,xft:Bitstream Vera Sans Mono:pixelsize=33"
@@ -43,7 +42,7 @@ OBS_COLLECTION = "GLXGEARS"
 
 
 LAUNCH_LIST = [
-    f"obs --collection {OBS_COLLECTION} --websocket_debug --websocket_port {OBS_PORT} --websocket_password {OBS_PASSWORD} --startstreaming ",
+    f"obs --collection {OBS_COLLECTION} --websocket_port {OBS_PORT} --websocket_password {OBS_PASSWORD} --startstreaming ", #--websocket_debug ",
   TermParams(title="sensors", command="glances --disable-plugin processlist,fs,diskio,network,now,processcount,ports -4 -1"),
   TermParams(title="top", command="gtop"),
   TermParams(title="glxgears-log", command="glxgears", font_string=FONT_STRING_LOG, geometry=TermGeometry(160, 50)),
@@ -81,13 +80,52 @@ app = Flask(__name__)
 SCENES = []
 SCENE_INDEX = 0
 
+
+import logging
+logging.basicConfig(level=logging.DEBUG)
+import asyncio
+import simpleobsws
+
+parameters = simpleobsws.IdentificationParameters() # Create an IdentificationParameters object (optional for connecting)
+
+ws = simpleobsws.WebSocketClient(url = f'ws://{OBS_HOST}:{OBS_PORT}') #, password = OBS_PASSWORD, identification_parameters = parameters) # Every possible argument has been passed, but none are required. See lib code for defaults.
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
+
+
+async def ws_connect():
+    await ws.connect() # Make the connection to obs-websocket
+    await ws.wait_until_identified() # Wait for the identification handshake to complete
+
+
+async def ws_disconnect():
+    await ws.disconnect()
+
+async def ws_get_scene_list():
+    request = simpleobsws.Request('GetVersion') # Build a Request object
+
+    ret = await ws.call(request) # Perform the request
+    if ret.ok(): # Check if the request succeeded
+        print("Request succeeded! Response data: {}".format(ret.responseData))
+    return ret
+
+async def fetch_scenes():
+    await ws_connect()
+    SCENES = await ws_get_scene_list()
+    print(SCENES)
+    await ws_disconnect()
+
+
 def main():
-    launch_commands()
-    # app.run(debug=True, port=8888)
-    time.sleep(1000)
-    obs_client = obs.ReqClient(host=OBS_HOST, port=OBS_PORT, password=OBS_PASSWORD)
-    resp = obs_client.get_scene_list()
-    SCENES = [di.get("sceneName") for di in reversed(resp.scenes)]
+    # launch_commands()
+    #time.sleep(1000)
+    #loop.run_until_complete(ws_connect())
+    #SCENES = loop.run_until_complete(ws_get_scene_list())
+    app.run(debug=True, port=8888)
+    
+    # obs_client = obs.ReqClient(host=OBS_HOST, port=OBS_PORT, password=OBS_PASSWORD)
+    # resp = obs_client.get_scene_list()
+    # SCENES = [di.get("sceneName") for di in reversed(resp.scenes)]
     # for scene in scenes:
     #     print(f"Switching to scene {scene}")
     #     obs_client.set_current_program_scene(scene)
@@ -103,6 +141,8 @@ def keep_alive():
 
 @app.route("/scene/<scene_name>", methods=["GET"])
 def scene(scene_name=None):
+    if not SCENES:
+        loop.run_until_complete(fetch_scenes())
     if scene_name in SCENES:
         SCENE_INDEX = SCENES.index(scene_name)
     elif scene_name == "next":
@@ -123,7 +163,9 @@ import atexit
 
 
 def handle_exit(*args):
+    loop.run_until_complete(ws_disconnect())
     kill_commands()
+    
 
 if __name__ == "__main__":
     
