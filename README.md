@@ -34,3 +34,17 @@ sudo apt-get install obs-studio
 sudo apt install glances
 sudo npm install -g gtop
 ```
+
+# Nginx configuration
+
+```
+    location /obsfucator {
+        rewrite ^/obsfucator(.*)$ $1 break;
+        proxy_pass http://localhost:8001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_redirect off;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+```
