@@ -44,22 +44,51 @@ OBS_PASSWORD = config["connection"]["password"]
 OBS_COLLECTION = "GLXGEARS"
 
 
-LAUNCH_LIST = [
-        f"obs --collection {OBS_COLLECTION} --websocket_port {OBS_PORT} --websocket_password {OBS_PASSWORD} --startstreaming ", #--websocket_debug ",
-  #TermParams(title="sensors", command="glances --disable-plugin processlist,fs,diskio,network,now,processcount,ports -4 -1"),
-  TermParams(title="simulator", command="./run.sh"),
-  #TermParams(title="top", command="gtop"),
-  TermParams(title="nvidia-smi", command="watch -n 3 nvidia-smi"),
-  #TermParams(title="glxgears-log", command="glxgears", font_string=FONT_STRING_LOG, geometry=TermGeometry(160, 50)),
-  #TermParams(title="df", command="watch -n 2 df", geometry=TermGeometry(20, 8)),
-]
-
 import threading
+
+AIRSIM_ENV_PATH = "/home/standard/src/AirSimEnvs/"
 
 class Launcher:
     processes_launched = []
 
     _kill_timer = None
+
+    _airsim_env = "hm"
+
+    @classmethod
+    def set_airsim_env(cls, name):
+        envs = [ os.path.basename(f.path) for f in os.scandir(AIRSIM_ENV_PATH) if f.is_dir() ]
+        if name in envs:
+            self._airsim_env = name
+            cls.full_relaunch()
+            return name
+        elif name == "next":
+            i = envs.index(cls._airsim_env)
+            i += 1
+            if i == len(envs):
+                i = 0
+            cls._airsim_env = envs[i]
+            cls.full_relaunch()
+            return cls._airsim_env
+        else:
+            assert(0)
+
+
+    @classmethod
+    def launch_list(cls):
+        return  [
+f"obs --collection {OBS_COLLECTION} --websocket_port {OBS_PORT} --websocket_password {OBS_PASSWORD} --startstreaming ", #--websocket_debug ",
+TermParams(title="simulator", command=f"./run_airsim.sh {AIRSIM_ENV_PATH}{cls._airsim_env}"),
+TermParams(title="nvidia-smi", command="watch -n 3 nvidia-smi"),
+  #TermParams(title="sensors", command="glances --disable-plugin processlist,fs,diskio,network,now,processcount,ports -4 -1"),
+  #TermParams(title="top", command="gtop"),
+  #TermParams(title="glxgears-log", command="glxgears", font_string=FONT_STRING_LOG, geometry=TermGeometry(160, 50)),
+  #TermParams(title="df", command="watch -n 2 df", geometry=TermGeometry(20, 8)),
+]
+
+    @classmethod
+    def kill_airsim(cls):
+        subprocess.call(["./kill_airsim.sh"])
 
     @classmethod
     def kill(cls):
@@ -69,13 +98,18 @@ class Launcher:
         for p in cls.processes_launched:
             print(f"@KILLING {p}")
             p.kill()
-        subprocess.call(["./kill.sh"])
+        cls.kill_airsim()
         cls.processes_launched = []
+
+    @classmethod
+    def full_relaunch(cls):
+        cls.kill()
+        cls.launch()
 
     @classmethod
     def is_launched(cls):
         return len(cls.processes_launched) > 0
-    
+
     @classmethod
     def keep_alive(cls):
         if cls._kill_timer:
@@ -86,7 +120,7 @@ class Launcher:
     @classmethod
     def launch(cls):
         cls.kill()
-        for cmd in LAUNCH_LIST:
+        for cmd in cls.launch_list():
             print(f"@LAUCHING\n{cmd}\n")
             if isinstance(cmd, TermParams):
                 exec_name = "/bin/urxvt"
@@ -184,6 +218,15 @@ def keep_alive():
         launch()
     Launcher.keep_alive()
     return jsonify({"status": "alive"})
+
+
+@app.route("/airsimEnv/<env_name>", methods=["GET"])
+def airsim_env(env_name=None):
+    if not Launcher.is_launched():
+        launch()
+    Launcher.keep_alive()
+    return jsonify({"env":Launcher.set_airsim_env(env_name)})
+
 
 @app.route("/scene/<scene_name>", methods=["GET"])
 def scene(scene_name=None):
