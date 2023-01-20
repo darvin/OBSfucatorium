@@ -45,10 +45,12 @@ OBS_COLLECTION = "GLXGEARS"
 
 
 LAUNCH_LIST = [
-    f"obs --collection {OBS_COLLECTION} --websocket_port {OBS_PORT} --websocket_password {OBS_PASSWORD} --startstreaming ", #--websocket_debug ",
+        f"obs --collection {OBS_COLLECTION} --websocket_port {OBS_PORT} --websocket_password {OBS_PASSWORD} --startstreaming ", #--websocket_debug ",
   TermParams(title="sensors", command="glances --disable-plugin processlist,fs,diskio,network,now,processcount,ports -4 -1"),
+  TermParams(title="simulator", command="./run.sh"),
   TermParams(title="top", command="gtop"),
-  TermParams(title="glxgears-log", command="glxgears", font_string=FONT_STRING_LOG, geometry=TermGeometry(160, 50)),
+  TermParams(title="nvidia-smi", command="watch -n 3 nvidia-smi"),
+  #TermParams(title="glxgears-log", command="glxgears", font_string=FONT_STRING_LOG, geometry=TermGeometry(160, 50)),
   TermParams(title="df", command="watch -n 2 df", geometry=TermGeometry(20, 8)),
 ]
 
@@ -67,6 +69,7 @@ class Launcher:
         for p in cls.processes_launched:
             print(f"@KILLING {p}")
             p.kill()
+        subprocess.call(["./kill.sh"])
         cls.processes_launched = []
 
     @classmethod
@@ -89,7 +92,7 @@ class Launcher:
                 exec_name = "/bin/urxvt"
                 argv = [cmd.title ] + shlex.split(str(cmd))
             else:
-                exec_name = cmd.split(' ')[0]
+                exec_name = os.path.expanduser(cmd.split(' ')[0])
                 argv = cmd.split(' ')[1:]
             p = subprocess.Popen(argv, executable=exec_name, env=ENV)
             #, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
