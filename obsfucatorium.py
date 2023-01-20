@@ -10,10 +10,10 @@ from flask import Flask, jsonify, request
 
 ENV=dict(os.environ, DISPLAY=":0.0", XAUTHORITY=os.path.expanduser("~/.Xauthority"))
 KEEP_ALIVE_TIMEOUT_SECONDS = 60.0
-FONT_STRING_BLACKLETTER = "xft:F25 BlackletterTypewriter:pixelsize=20,xft:Pragmata Pro Mono:pixelsize=24,xft:Bitstream Vera Sans Mono:pixelsize=33"
-FONT_STRING_MONO = "xft:Pragmata Pro Mono:pixelsize=24,xft:Bitstream Vera Sans Mono:pixelsize=33"
-FONT_STRING_LOG = "xft:Pragmata Pro Mono:pixelsize=10,xft:Bitstream Vera Sans Mono:pixelsize=33"
-FONT_STRING_DEFAULT = FONT_STRING_BLACKLETTER
+FONT_STRING_BLACKLETTER = "xft:F25 BlackletterTypewriter:pixelsize=20,xft:Fira Mono:pixelsize=24,xft:Bitstream Vera Sans Mono:pixelsize=33"
+FONT_STRING_MONO = "xft:Fira Mono:pixelsize=24,xft:Bitstream Vera Sans Mono:pixelsize=33"
+FONT_STRING_LOG = "xft:Fira Mono:pixelsize=10,xft:Bitstream Vera Sans Mono:pixelsize=33"
+FONT_STRING_DEFAULT = FONT_STRING_MONO
 
 class TermGeometry(NamedTuple):
     x: int = 88
@@ -24,7 +24,7 @@ class TermGeometry(NamedTuple):
 
 class TermParams(NamedTuple):
     background_color: str = "magenta"
-    foreground_color: str = "white"
+    foreground_color: str = "black"
     font_string: str = FONT_STRING_DEFAULT
     geometry: TermGeometry = TermGeometry()
     title: str = "-NoTitle- Shell"
@@ -46,12 +46,12 @@ OBS_COLLECTION = "GLXGEARS"
 
 LAUNCH_LIST = [
         f"obs --collection {OBS_COLLECTION} --websocket_port {OBS_PORT} --websocket_password {OBS_PASSWORD} --startstreaming ", #--websocket_debug ",
-  TermParams(title="sensors", command="glances --disable-plugin processlist,fs,diskio,network,now,processcount,ports -4 -1"),
+  #TermParams(title="sensors", command="glances --disable-plugin processlist,fs,diskio,network,now,processcount,ports -4 -1"),
   TermParams(title="simulator", command="./run.sh"),
-  TermParams(title="top", command="gtop"),
+  #TermParams(title="top", command="gtop"),
   TermParams(title="nvidia-smi", command="watch -n 3 nvidia-smi"),
   #TermParams(title="glxgears-log", command="glxgears", font_string=FONT_STRING_LOG, geometry=TermGeometry(160, 50)),
-  TermParams(title="df", command="watch -n 2 df", geometry=TermGeometry(20, 8)),
+  #TermParams(title="df", command="watch -n 2 df", geometry=TermGeometry(20, 8)),
 ]
 
 import threading
